@@ -1,0 +1,25 @@
+{
+  "nodes": {
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1781141829,
+        "narHash": "sha256-hpWf5zxi24v6GWvUB9VZAMlVCSc4YZvdDIhQj7CtcwE=",
+        "rev": "01ee80cd93aa8154640543e78f134f6c57e8f4d9",
+        "revCount": 990661,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/DeterminateSystems/secure-packages-rolling/0.1.990661%2Brev-01ee80cd93aa8154640543e78f134f6c57e8f4d9/019eb46b-f937-7333-958a-3d7af68271a8/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/DeterminateSystems/secure-packages-rolling/0"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}

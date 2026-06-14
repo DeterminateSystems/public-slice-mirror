@@ -1,0 +1,104 @@
+name: Subset mirror
+
+on:
+  workflow_call:
+    inputs:
+      flake-name:
+        description: FlakeHub flake name to cache against and push to.
+        required: true
+        type: string
+      artifact-name:
+        description: Name of the store-paths artifact to download.
+        required: false
+        type: string
+        default: store-paths
+      rolling:
+        description: Push a rolling release to FlakeHub.
+        required: false
+        type: boolean
+        default: true
+      tag:
+        description: Git tag to publish to FlakeHub (mutually exclusive with rolling).
+        required: false
+        type: string
+        default: ""
+      directory:
+        description: Directory containing the flake to push.
+        required: false
+        type: string
+        default: "."
+
+jobs:
+  subset-mirror:
+    runs-on: UbuntuLatest32Cores128G
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: DeterminateSystems/determinate-nix-action@29680e33cbf947967d8a1f9798654c329b3d49be # v3.21.1
+
+      - uses: "DeterminateSystems/flakehub-push@3135d10865f2938b309b1fa8f7941c48fe948de8"
+        with:
+          name: ${{ inputs.flake-name }}
+          rolling: ${{ inputs.rolling }}
+          tag: ${{ inputs.tag }}
+          visibility: "private"
+          include-output-paths: true
+          directory: ${{ inputs.directory }}
+
+      - name: Create work directory
+        id: workdir
+        shell: bash
+        run: echo "dir=$(mktemp -d)" >> "$GITHUB_OUTPUT"
+
+      - name: Download store paths
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ steps.workdir.outputs.dir }}
+
+      - name: Check closure for -source paths
+        shell: bash
+        working-directory: ${{ steps.workdir.outputs.dir }}
+        run: |
+          mapfile -t paths < store-paths.txt
+          offenders="$(nix path-info -r "${paths[@]}" | grep -E -- '-source$' || true)"
+          if [ -n "$offenders" ]; then
+            echo "::error::Closure contains -source store paths:" >&2
+            echo "$offenders" >&2
+            exit 1
+          fi
+      
+      # Determinate-nixd will have us authed for fetches.
+      # We're deliberately setting up flakehub cache after verifying the store paths are clean
+      - uses: DeterminateSystems/flakehub-cache-action@f9c8d8aaf92e6dbde896d6f84350f33d62392bd5 # v3.21.1
+        with:
+          flakehub-flake-name: ${{ inputs.flake-name }}
+
+      - name: Propagate store paths
+        shell: bash
+        working-directory: ${{ steps.workdir.outputs.dir }}
+        run: |
+          cat > upload.nix <<'EOF'
+          let
+              storePathsFile = ./store-paths.txt;
+              lines = builtins.filter
+                  (line: builtins.isString line && line != "")
+                  (builtins.split "\n" (builtins.readFile storePathsFile));
+          in
+          derivation {
+              name = "propagate";
+              system = builtins.currentSystem;
+              builder = "/bin/sh";
+              args = [ "-c" "echo $extra; echo $extra > $out" ];
+
+              extra = map builtins.storePath lines;
+          }
+          EOF
+
+          cat store-paths.txt
+          nix-build upload.nix
