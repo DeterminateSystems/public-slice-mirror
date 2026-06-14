@@ -1,0 +1,39 @@
+name: Upload store paths
+description: Write a list of Nix store paths to store-paths.txt and upload it as an artifact.
+
+inputs:
+  store-paths:
+    description: Newline-separated list of Nix store paths.
+    required: true
+  name:
+    description: Name of the uploaded artifact.
+    required: false
+    default: store-paths
+
+runs:
+  using: composite
+  steps:
+    - name: Record store paths
+      shell: bash
+      run: |
+        printf '%s\n' "${INPUTS_STORE_PATHS}" | sed '/^[[:space:]]*$/d' > store-paths.txt
+        cat store-paths.txt
+      env:
+        INPUTS_STORE_PATHS: ${{ inputs.store-paths }}
+
+    - name: Check closure for -source paths
+      shell: bash
+      run: |
+        mapfile -t paths < store-paths.txt
+        offenders="$(nix path-info -r "${paths[@]}" | grep -E -- '-source$' || true)"
+        if [ -n "$offenders" ]; then
+          echo "::error::Closure contains -source store paths:" >&2
+          echo "$offenders" >&2
+          exit 1
+        fi
+
+    - name: Upload store paths
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs.name }}
+        path: store-paths.txt

@@ -1,0 +1,48 @@
+name: Nix
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  phase-one:
+    runs-on: UbuntuLatest32Cores128G
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      store-path: ${{ steps.build.outputs.store-path }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: DeterminateSystems/determinate-nix-action@29680e33cbf947967d8a1f9798654c329b3d49be # v3.21.1
+
+      - uses: DeterminateSystems/flakehub-cache-action@f9c8d8aaf92e6dbde896d6f84350f33d62392bd5 # v3.21.1
+
+      - name: Build default output
+        id: build
+        run: |
+          nix build ./tests#default
+          store_path=$(readlink -f result)
+          echo "store-path=$store_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload store paths
+        uses: ./.github/actions/upload-store-paths
+        with:
+          store-paths: ${{ steps.build.outputs.store-path }}
+
+      - name: Nix flake check
+        run: nix flake check ./tests --print-build-logs
+
+  subset-mirror:
+    needs: phase-one
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/subset-mirror.yml
+    with:
+      flake-name: DeterminateSystems/public-slice-mirror-public
+      directory: tests
