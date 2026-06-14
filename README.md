@@ -93,3 +93,4 @@ one output:
 | `artifact-name` | no       | `store-paths` | Name of the store-paths artifact to download (match the action's `name`). |
 | `rolling`       | no       | `true`        | Push a rolling release. Mutually exclusive with `tag`.                    |
 | `tag`           | no       | `""`          | Git tag to publish. Set `rolling: false` when using this.                 |
+| `directory`     | no       | `.`           | Directory containing the flake to push.                                   |
