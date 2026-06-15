@@ -27,6 +27,14 @@ on:
         required: false
         type: string
         default: "."
+      checkout-ref:
+        description: The ref to checkout
+        required: true
+        type: string
+      flakehub-push:
+        description: Push a release to FlakeHub.
+        required: true
+        type: boolean
 
 jobs:
   subset-mirror:
@@ -37,11 +45,13 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: ${{ inputs.checkout-ref }}
           persist-credentials: false
 
       - uses: DeterminateSystems/determinate-nix-action@29680e33cbf947967d8a1f9798654c329b3d49be # v3.21.1
 
       - uses: "DeterminateSystems/flakehub-push@3135d10865f2938b309b1fa8f7941c48fe948de8"
+        if: ${{ inputs.flakehub-push }}
         with:
           name: ${{ inputs.flake-name }}
           rolling: ${{ inputs.rolling }}
