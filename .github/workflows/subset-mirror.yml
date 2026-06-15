@@ -98,7 +98,7 @@ jobs:
               storePathsFile = ./store-paths.txt;
               lines = builtins.filter
                   (line: builtins.isString line && line != "")
-                  (builtins.split "\n" (builtins.readFile storePathsFile));
+                  (builtins.split "[[:space:]]+" (builtins.readFile storePathsFile));
           in
           derivation {
               name = "propagate";
