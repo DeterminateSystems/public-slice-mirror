@@ -46,3 +46,5 @@ jobs:
     with:
       flake-name: DeterminateSystems/public-slice-mirror-public
       directory: tests
+      flakehub-push: ${{ github.event_name != 'pull_request' }}
+      checkout-ref: ${{ github.ref }}
